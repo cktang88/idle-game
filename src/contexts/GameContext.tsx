@@ -207,8 +207,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
             .filter(() => Math.random() < mineral.chance).length;
 
           if (successes > 0) {
-            const amount = Math.floor(
-              (successes * Math.random() * shipStats.miningCapacity) /
+            const amount = Math.ceil(
+              (successes * shipStats.miningCapacity) /
                 INITIAL_SHIP_STATS.miningCapacity
             );
             newState.minerals[mineral.name] =
@@ -305,12 +305,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    // Roll for junk
-    if (state.ships.mining > 0) {
-      junkFound = Array(state.ships.mining)
-        .fill(0)
-        .filter(() => Math.random() < JUNK_CHANCE).length;
-    }
+    // each ship that didn't get at least 1 mineral gets junk
+    junkFound = Math.max(
+      0,
+      state.ships.mining -
+        Object.values(mineralGains).reduce((a, b) => a + b, 0)
+    );
 
     // Show mining results toast
     if (Object.keys(mineralGains).length > 0 || junkFound > 0) {

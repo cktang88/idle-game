@@ -47,13 +47,12 @@ export default function ShipManagement() {
 
     const interval = setInterval(() => {
       // Calculate build progress increment based on production speed
-      const progressIncrement = (state.baseStats.shipProduction / 10) * 100;
-      const newProgress = Math.min(
-        100,
-        state.buildProgress + progressIncrement
-      );
+      // We update every 100ms, so we need to calculate how much progress that represents
+      const progressPerTick =
+        (100 * 100) / (BASE_SHIP_BUILD_TIME / state.baseStats.shipProduction);
+      const newProgress = Math.min(100, state.buildProgress + progressPerTick);
       dispatch({ type: "UPDATE_BUILD_PROGRESS", payload: newProgress });
-    }, BASE_SHIP_BUILD_TIME / state.baseStats.shipProduction);
+    }, 100); // Update every 100ms for smooth progress
 
     return () => clearInterval(interval);
   }, [

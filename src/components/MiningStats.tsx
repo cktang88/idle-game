@@ -4,7 +4,6 @@ import {
   MINERALS,
   BASE_MINING_TICK,
   BASE_ALIEN_DANGER_INCREASE,
-  JUNK_CHANCE,
 } from "../constants/gameConstants";
 
 export default function MiningStats() {
@@ -54,16 +53,6 @@ export default function MiningStats() {
   useEffect(() => {
     if (state.ships.mining > 0) {
       setMiningTicks((prev) => prev + 1);
-    }
-  }, [state.ships.mining]);
-
-  // Track mining results from game state changes
-  useEffect(() => {
-    const newJunkCount = Math.floor(
-      Math.random() * state.ships.mining * JUNK_CHANCE
-    );
-    if (newJunkCount > 0) {
-      setJunkCollected((prev) => prev + newJunkCount);
     }
   }, [state.ships.mining]);
 

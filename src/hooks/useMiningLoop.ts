@@ -7,6 +7,7 @@ import {
   BASE_ALIEN_DANGER_INCREASE,
   BASE_HIT_RATE,
   MAX_ALIEN_DANGER,
+  BASE_SHIP_REPAIR_TIME,
 } from "../constants/gameConstants";
 import { useToast } from "../components/Toast";
 
@@ -136,13 +137,12 @@ export function useMiningLoop() {
 
     const interval = setInterval(() => {
       // Calculate repair progress increment based on healing stat
-      const progressIncrement = (state.baseStats.healing / 10) * 100;
-      const newProgress = Math.min(
-        100,
-        state.repairProgress + progressIncrement
-      );
+      // We update every 100ms, so we need to calculate how much progress that represents
+      const progressPerTick =
+        (100 * 100) / (BASE_SHIP_REPAIR_TIME / state.baseStats.healing);
+      const newProgress = Math.min(100, state.repairProgress + progressPerTick);
       dispatch({ type: "UPDATE_REPAIR_PROGRESS", payload: newProgress });
-    }, BASE_MINING_TICK);
+    }, 100); // Update every 100ms for smooth progress
 
     return () => clearInterval(interval);
   }, [
