@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { MineralType } from "../types/game";
 import { MINERALS } from "../constants/gameConstants";
 
-const PRICE_UPDATE_INTERVAL = 5000; // 5 seconds
-const VOLATILITY = 0.1; // 10% price movement
+const PRICE_UPDATE_INTERVAL = 10_000; // 10 seconds
+const VOLATILITY = 0.25; // 25% price movement
 
 interface PriceHistory {
   current: number;

@@ -19,12 +19,12 @@ export const INITIAL_SHIP_STATS = {
   miningCapacity: 100,
   defense: 100,
   evasion: 10,
-  speed: 1,
   repairability: 10,
   stealth: 10,
 };
 
-export const BASE_MINING_TICK = 5000; // 5 seconds
+export const BASE_MINING_TICK = 500; // 5 seconds
+export const BASE_SHIP_BUILD_TIME = 10000; // 10 seconds
 export const BASE_HIT_RATE = 0.3; // 30% chance to hit each ship
 export const BASE_DAMAGE = 1.5; // Base damage per hit
 export const MAX_DEFENSE = 100; // Maximum defense value

@@ -20,7 +20,7 @@ import {
 import { useToast } from "../components/Toast";
 
 type GameAction =
-  | { type: "ADD_SHIP" }
+  | { type: "START_BUILDING_SHIP" }
   | { type: "UPDATE_SHIP_COUNTS"; payload: Partial<Record<ShipStatus, number>> }
   | { type: "UPDATE_SHIP_STATS"; payload: Partial<ShipStats> }
   | { type: "ADD_MINERALS"; payload: Partial<Record<MineralType, number>> }
@@ -45,15 +45,16 @@ type GameAction =
       };
     }
   | { type: "ADD_CREDITS"; payload: number }
-  | { type: "PROCESS_MINING_TICK" };
+  | { type: "PROCESS_MINING_TICK" }
+  | { type: "UPDATE_REPAIR_PROGRESS"; payload: number }
+  | { type: "UPDATE_BUILD_PROGRESS"; payload: number };
 
 const initialState: GameState = {
   ships: {
+    building: 0,
     idle: 1,
     mining: 0,
-    returning: 0,
     repairing: 0,
-    building: 0,
   },
   shipStats: INITIAL_SHIP_STATS,
   minerals: Object.fromEntries(MINERALS.map((m) => [m.name, 0])) as Record<
@@ -70,18 +71,22 @@ const initialState: GameState = {
   },
   alienDanger: 0,
   credits: 0,
+  repairProgress: 0,
+  buildProgress: 0,
 };
 
 function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
-    case "ADD_SHIP": {
+    case "START_BUILDING_SHIP": {
+      if (state.credits < 100 || state.ships.building > 0) return state;
       return {
         ...state,
         ships: {
           ...state.ships,
-          idle: state.ships.idle + 1,
+          building: state.ships.building + 1,
         },
-        credits: state.credits - 100, // Basic ship cost
+        credits: state.credits - 100,
+        buildProgress: 0,
       };
     }
 
@@ -169,6 +174,25 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         credits: state.credits + action.payload,
       };
     }
+    case "UPDATE_REPAIR_PROGRESS": {
+      const newProgress = action.payload;
+      if (newProgress >= 100 && state.ships.repairing > 0) {
+        // Move one ship from repairing to idle
+        return {
+          ...state,
+          ships: {
+            ...state.ships,
+            repairing: state.ships.repairing - 1,
+            idle: state.ships.idle + 1,
+          },
+          repairProgress: 0, // Reset progress for next ship
+        };
+      }
+      return {
+        ...state,
+        repairProgress: newProgress,
+      };
+    }
     case "PROCESS_MINING_TICK": {
       const { ships, shipStats } = state;
       const newState = { ...state };
@@ -183,35 +207,35 @@ function gameReducer(state: GameState, action: GameAction): GameState {
             .filter(() => Math.random() < mineral.chance).length;
 
           if (successes > 0) {
+            const amount = Math.floor(
+              (successes * Math.random() * shipStats.miningCapacity) /
+                INITIAL_SHIP_STATS.miningCapacity
+            );
             newState.minerals[mineral.name] =
-              (newState.minerals[mineral.name] || 0) + successes;
+              (newState.minerals[mineral.name] || 0) + amount;
           }
         });
 
-        // Update alien danger
+        // Update alien danger (only affected by mining ships)
         const dangerIncrease =
           BASE_ALIEN_DANGER_INCREASE *
-          (1 - shipStats.stealth / 100) *
-          ships.mining;
+          ships.mining *
+          (1 - shipStats.stealth / 100);
         newState.alienDanger = Math.min(
-          100,
+          MAX_ALIEN_DANGER,
           state.alienDanger + dangerIncrease
         );
 
-        // Process alien attacks if danger reaches 100%
-        if (newState.alienDanger >= 100) {
+        // Process alien attacks if danger reaches threshold
+        if (newState.alienDanger >= MAX_ALIEN_DANGER) {
           const shipsHit = Math.floor(
             ships.mining * (1 - shipStats.evasion / 100) * BASE_HIT_RATE
           );
 
           if (shipsHit > 0) {
-            const damage = (1 - shipStats.defense / MAX_DEFENSE) * BASE_DAMAGE;
-
-            // Move hit ships to repairing or destroy them
+            // Move hit ships to repairing
             newState.ships.mining -= shipsHit;
-            if (damage < 1) {
-              newState.ships.repairing += shipsHit;
-            }
+            newState.ships.repairing += shipsHit;
           }
 
           // Reset danger after attack
@@ -220,6 +244,25 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       }
 
       return newState;
+    }
+    case "UPDATE_BUILD_PROGRESS": {
+      const newProgress = action.payload;
+      if (newProgress >= 100 && state.ships.building > 0) {
+        // Move one ship from building to idle
+        return {
+          ...state,
+          ships: {
+            ...state.ships,
+            building: state.ships.building - 1,
+            idle: state.ships.idle + 1,
+          },
+          buildProgress: 0, // Reset progress for next ship
+        };
+      }
+      return {
+        ...state,
+        buildProgress: newProgress,
+      };
     }
     default:
       return state;

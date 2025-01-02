@@ -1,10 +1,13 @@
 import { useGame } from "../contexts/GameContext";
 import { ShipStatus } from "../types/game";
+import { RepairProgress } from "./RepairProgress";
+import { BuildProgress } from "./BuildProgress";
+import { useEffect } from "react";
+import { BASE_SHIP_BUILD_TIME } from "../constants/gameConstants";
 
 const STATUS_COLORS: Record<ShipStatus, { bg: string; text: string }> = {
   idle: { bg: "bg-gray-100", text: "text-gray-800" },
   mining: { bg: "bg-green-100", text: "text-green-800" },
-  returning: { bg: "bg-blue-100", text: "text-blue-800" },
   repairing: { bg: "bg-yellow-100", text: "text-yellow-800" },
   building: { bg: "bg-purple-100", text: "text-purple-800" },
 };
@@ -13,7 +16,7 @@ export default function ShipManagement() {
   const { state, dispatch } = useGame();
 
   const totalShips = Object.values(state.ships).reduce((a, b) => a + b, 0);
-  const canBuildShip = state.credits >= 100;
+  const canBuildShip = state.credits >= 100 && state.ships.building === 0;
 
   const sendAllMining = () => {
     if (state.ships.idle > 0) {
@@ -27,11 +30,38 @@ export default function ShipManagement() {
     }
   };
 
-  const buildShip = () => {
+  const startBuildingShip = () => {
     if (canBuildShip) {
-      dispatch({ type: "ADD_SHIP" });
+      dispatch({ type: "START_BUILDING_SHIP" });
     }
   };
+
+  // Ship building progress loop
+  useEffect(() => {
+    if (state.ships.building === 0) {
+      if (state.buildProgress !== 0) {
+        dispatch({ type: "UPDATE_BUILD_PROGRESS", payload: 0 });
+      }
+      return;
+    }
+
+    const interval = setInterval(() => {
+      // Calculate build progress increment based on production speed
+      const progressIncrement = (state.baseStats.shipProduction / 10) * 100;
+      const newProgress = Math.min(
+        100,
+        state.buildProgress + progressIncrement
+      );
+      dispatch({ type: "UPDATE_BUILD_PROGRESS", payload: newProgress });
+    }, BASE_SHIP_BUILD_TIME / state.baseStats.shipProduction);
+
+    return () => clearInterval(interval);
+  }, [
+    state.ships.building,
+    state.buildProgress,
+    state.baseStats.shipProduction,
+    dispatch,
+  ]);
 
   return (
     <div className="bg-white rounded-lg p-4 shadow-sm">
@@ -39,7 +69,7 @@ export default function ShipManagement() {
         <h2 className="text-lg font-bold">Ships ({totalShips})</h2>
         <div className="flex gap-2">
           <button
-            onClick={buildShip}
+            onClick={startBuildingShip}
             disabled={!canBuildShip}
             className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 text-sm"
           >
@@ -68,6 +98,18 @@ export default function ShipManagement() {
           )
         )}
       </div>
+
+      {state.ships.building > 0 && (
+        <div className="mt-4">
+          <BuildProgress />
+        </div>
+      )}
+
+      {state.ships.repairing > 0 && (
+        <div className="mt-4">
+          <RepairProgress />
+        </div>
+      )}
 
       <div className="mt-4 space-y-2">
         <h3 className="font-medium text-sm">Global Ship Stats</h3>

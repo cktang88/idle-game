@@ -14,18 +14,12 @@ export interface MineralInfo {
   baseValue: number;
 }
 
-export type ShipStatus =
-  | "idle"
-  | "mining"
-  | "returning"
-  | "repairing"
-  | "building";
+export type ShipStatus = "building" | "idle" | "mining" | "repairing";
 
 export interface ShipStats {
   miningCapacity: number;
   defense: number;
   evasion: number;
-  speed: number;
   repairability: number;
   stealth: number;
 }
@@ -42,4 +36,6 @@ export interface GameState {
   };
   alienDanger: number;
   credits: number;
+  repairProgress: number; // 0-100 progress percentage
+  buildProgress: number; // 0-100 progress percentage
 }
