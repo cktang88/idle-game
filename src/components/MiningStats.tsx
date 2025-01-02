@@ -158,20 +158,6 @@ export default function MiningStats() {
             </div>
           </div>
         </div>
-
-        <div className="col-span-2 bg-gray-50 rounded p-3">
-          <h3 className="text-sm font-medium mb-2">Resources Mined</h3>
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            {MINERALS.map((mineral) => (
-              <div key={mineral.name} className="flex justify-between">
-                <span>{mineral.name}:</span>
-                <span className="font-medium">
-                  {Math.floor(totalMined[mineral.name] || 0)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );
