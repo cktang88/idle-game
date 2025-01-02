@@ -1,6 +1,6 @@
 Idle/incremental game:
 
-This is entirely a text based game, with buttons to buy upgrades.
+This is entirely a React web-based text-based game, with buttons to buy upgrades.
 
 GAME DESIGN PRINCIPLES:
 
