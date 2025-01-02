@@ -9,7 +9,6 @@ import {
 export default function MiningStats() {
   const { state } = useGame();
   const [totalMined, setTotalMined] = useState<Record<string, number>>({});
-  const [miningTicks, setMiningTicks] = useState(0);
   const [shipsLost, setShipsLost] = useState(0);
   const [junkCollected, setJunkCollected] = useState(0);
   const [tickProgress, setTickProgress] = useState(0);
@@ -48,13 +47,6 @@ export default function MiningStats() {
 
     return () => clearInterval(interval);
   }, [state.ships.mining, lastTickTime]);
-
-  // Track mining stats
-  useEffect(() => {
-    if (state.ships.mining > 0) {
-      setMiningTicks((prev) => prev + 1);
-    }
-  }, [state.ships.mining]);
 
   // Track total mined with better accuracy
   useEffect(() => {
@@ -108,10 +100,6 @@ export default function MiningStats() {
         <div className="bg-gray-50 rounded p-3">
           <h3 className="text-sm font-medium mb-2">Mining Stats</h3>
           <div className="space-y-1 text-sm">
-            <div className="flex justify-between">
-              <span>Time Mining:</span>
-              <span>{Math.floor(miningTicks * 5)}s</span>
-            </div>
             <div className="flex justify-between">
               <span>Ships Lost:</span>
               <span className="text-red-600 font-medium">{shipsLost}</span>

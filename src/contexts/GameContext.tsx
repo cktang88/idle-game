@@ -75,7 +75,11 @@ const initialState: GameState = {
   buildProgress: 0,
 };
 
-function gameReducer(state: GameState, action: GameAction): GameState {
+function gameReducer(
+  state: GameState,
+  action: GameAction,
+  showToast?: (message: string, type: "success" | "warning" | "error") => void
+): GameState {
   switch (action.type) {
     case "START_BUILDING_SHIP": {
       if (state.credits < 100 || state.ships.building > 0) return state;
@@ -122,7 +126,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           { ...state.minerals }
         ),
       };
-    case "REFINE_MINERAL":
+    case "REFINE_MINERAL": {
       const { mineral, amount } = action.payload;
       if (state.minerals[mineral] < amount) return state;
 
@@ -137,6 +141,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           [mineral]: state.refinedMinerals[mineral] + amount,
         },
       };
+    }
     case "UPDATE_ALIEN_DANGER":
       return {
         ...state,
@@ -194,8 +199,11 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       };
     }
     case "PROCESS_MINING_TICK": {
+      if (!showToast) return state;
+
       const { ships, shipStats } = state;
       const newState = { ...state };
+      const mineralGains: Record<string, number> = {};
 
       // Process mining results
       if (ships.mining > 0) {
@@ -213,8 +221,21 @@ function gameReducer(state: GameState, action: GameAction): GameState {
             );
             newState.minerals[mineral.name] =
               (newState.minerals[mineral.name] || 0) + amount;
+            mineralGains[mineral.name] = amount;
           }
         });
+
+        // Calculate junk (for ships that didn't find minerals)
+        const successfulShips = Object.values(mineralGains).reduce(
+          (total, amount) =>
+            total + Math.ceil(amount / shipStats.miningCapacity),
+          0
+        );
+        const junkShips = Math.max(0, ships.mining - successfulShips);
+        if (junkShips > 0 && Math.random() < JUNK_CHANCE) {
+          newState.minerals.Junk = (newState.minerals.Junk || 0) + junkShips;
+          mineralGains.Junk = junkShips;
+        }
 
         // Update alien danger (only affected by mining ships)
         const dangerIncrease =
@@ -226,6 +247,19 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           state.alienDanger + dangerIncrease
         );
 
+        // Show alien danger warning if high but not at max
+        if (
+          newState.alienDanger >= 75 &&
+          newState.alienDanger < MAX_ALIEN_DANGER
+        ) {
+          showToast(
+            `⚠️ High Alien Activity Detected! (${Math.floor(
+              newState.alienDanger
+            )}%)`,
+            "warning"
+          );
+        }
+
         // Process alien attacks if danger reaches threshold
         if (newState.alienDanger >= MAX_ALIEN_DANGER) {
           const shipsHit = Math.floor(
@@ -233,14 +267,32 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           );
 
           if (shipsHit > 0) {
+            // TODO: actually use damage and defense in calculating ships to move to repair...
+            const damage = (1 - shipStats.defense / MAX_DEFENSE) * BASE_DAMAGE;
             // Move hit ships to repairing
-            newState.ships.mining -= shipsHit;
-            newState.ships.repairing += shipsHit;
+            newState.ships = {
+              ...newState.ships,
+              mining: newState.ships.mining - shipsHit,
+              repairing: newState.ships.repairing + shipsHit,
+            };
+
+            // Show damage notification
+            if (damage >= 1) {
+              showToast(`🚨 ${shipsHit} ships destroyed by aliens!`, "error");
+            } else {
+              showToast(
+                `⚠️ ${shipsHit} ships damaged and need repairs`,
+                "warning"
+              );
+            }
           }
 
           // Reset danger after attack
           newState.alienDanger = 0;
         }
+
+        // Store mining results in state for toast notifications
+        newState.lastMiningResults = mineralGains;
       }
 
       return newState;
@@ -275,8 +327,12 @@ const GameContext = createContext<{
 } | null>(null);
 
 export function GameProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(gameReducer, initialState);
   const { showToast } = useToast();
+  const [state, dispatch] = useReducer(
+    (state: GameState, action: GameAction) =>
+      gameReducer(state, action, showToast),
+    initialState
+  );
 
   // Process mining ticks
   useEffect(() => {
@@ -291,66 +347,17 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   // Track mining results and show toasts
   useEffect(() => {
-    const mineralGains: Record<string, number> = {};
-    let junkFound = 0;
-
-    MINERALS.forEach((mineral) => {
-      const rolls = state.ships.mining;
-      const successes = Array(rolls)
-        .fill(0)
-        .filter(() => Math.random() < mineral.chance).length;
-
-      if (successes > 0) {
-        mineralGains[mineral.name] = successes;
-      }
-    });
-
-    // each ship that didn't get at least 1 mineral gets junk
-    junkFound = Math.max(
-      0,
-      state.ships.mining -
-        Object.values(mineralGains).reduce((a, b) => a + b, 0)
-    );
+    if (!state.lastMiningResults) return;
 
     // Show mining results toast
-    if (Object.keys(mineralGains).length > 0 || junkFound > 0) {
-      const results = [
-        ...Object.entries(mineralGains).map(
-          ([mineral, amount]) => `${amount} ${mineral}`
-        ),
-        junkFound > 0 ? `${junkFound} Junk` : null,
-      ]
-        .filter(Boolean)
+    if (Object.keys(state.lastMiningResults).length > 0) {
+      const results = Object.entries(state.lastMiningResults)
+        .map(([mineral, amount]) => `${amount} ${mineral}`)
         .join(", ");
 
       showToast(`Mining Results: ${results}`, "success");
     }
-
-    // Show alien danger warning
-    if (state.alienDanger >= 75) {
-      showToast(
-        `⚠️ High Alien Activity Detected! (${Math.floor(state.alienDanger)}%)`,
-        "warning"
-      );
-    }
-
-    // Show ship damage/destruction
-    if (state.alienDanger >= 100) {
-      const shipsHit = Math.floor(
-        state.ships.mining * (1 - state.shipStats.evasion / 100) * BASE_HIT_RATE
-      );
-
-      if (shipsHit > 0) {
-        const damage =
-          (1 - state.shipStats.defense / MAX_DEFENSE) * BASE_DAMAGE;
-        if (damage >= 1) {
-          showToast(`🚨 ${shipsHit} ships destroyed by aliens!`, "error");
-        } else {
-          showToast(`⚠️ ${shipsHit} ships damaged and need repairs`, "warning");
-        }
-      }
-    }
-  }, [state.ships.mining, state.alienDanger]);
+  }, [state.lastMiningResults]);
 
   return (
     <GameContext.Provider value={{ state, dispatch }}>

@@ -15,6 +15,8 @@ export const MINERALS: MineralInfo[] = [
   },
 ];
 
+export const JUNK_CHANCE = 1; // 100% chance to get junk when a ship fails to find minerals
+
 export const INITIAL_SHIP_STATS = {
   miningCapacity: 100,
   defense: 100,
@@ -23,12 +25,12 @@ export const INITIAL_SHIP_STATS = {
   stealth: 10,
 };
 
-export const BASE_MINING_TICK = 500; // 5 seconds
-export const BASE_SHIP_BUILD_TIME = 20000; // 20 seconds
-export const BASE_SHIP_REPAIR_TIME = 10000; // 10 seconds
+export const BASE_MINING_TICK = 5000; // 5 seconds
+export const BASE_SHIP_BUILD_TIME = 40000; // 40 seconds
+export const BASE_SHIP_REPAIR_TIME = 20000; // 20 seconds
 export const BASE_HIT_RATE = 0.3; // 30% chance to hit each ship
 export const BASE_DAMAGE = 1.5; // Base damage per hit
 export const MAX_DEFENSE = 100; // Maximum defense value
-export const BASE_ALIEN_DANGER_INCREASE = 0.1; // Base increase per tick
+export const BASE_ALIEN_DANGER_INCREASE = 0.5; // Base increase per tick
 
 export const MAX_ALIEN_DANGER = 100; // Maximum alien danger value

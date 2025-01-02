@@ -5,7 +5,8 @@ export type MineralType =
   | "Tritum Spark"
   | "Celestium"
   | "Crystite"
-  | "Xotheneium";
+  | "Xotheneium"
+  | "Junk";
 
 export interface MineralInfo {
   name: MineralType;
@@ -38,4 +39,5 @@ export interface GameState {
   credits: number;
   repairProgress: number; // 0-100 progress percentage
   buildProgress: number; // 0-100 progress percentage
+  lastMiningResults?: Partial<Record<MineralType, number>>;
 }
